@@ -1,4 +1,4 @@
-# 🛒 MnC Item Spawner (Curated Catalog)
+# 📦 MnC Item Spawner (Curated Catalog)
 
 [![FiveM](https://img.shields.io/badge/FiveM-Ready-green.svg)](https://fivem.net/)
 [![QBCore](https://img.shields.io/badge/Framework-QBCore-blue.svg)](https://github.com/qbcore-framework)
