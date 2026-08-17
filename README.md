@@ -24,7 +24,10 @@ A collection of 17 completed, standalone FiveM resources built for QBCore server
 | [mnc-vehicleplacer](./mnc-vehicleplacer) | Spawns and maintains a fixed set of static decoration vehicles at exact coordinates on server start, with an auto-respawn watchdog for missing/deleted vehicles. |
 
 ### 🔧 Engine & Customization
-
+Download engine sounds here - 
+```bash
+https://drive.google.com/file/d/1iB2lXQN4O5ZIExfgCpvVE7WqYnR08yaP/view?usp=drive_link'
+```
 | Resource | Description |
 |---|---|
 | [mnc-engineswap-v1](./mnc-engineswap-v1) | Job-restricted engine shops selling a catalog of engine sounds, with paid delivery, a multi-stage install progress bar/minigame, and per-plate DB persistence. |
