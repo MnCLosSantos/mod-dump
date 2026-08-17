@@ -1,126 +1,98 @@
-# 💥 MNC Seize Car - Vehicle Removal Commands for QBCore
+# 🚔 MNC Seize Car
 
 [![FiveM](https://img.shields.io/badge/FiveM-Ready-green.svg)](https://fivem.net/)
 [![QBCore](https://img.shields.io/badge/Framework-QBCore-blue.svg)](https://github.com/qbcore-framework)
-[![Version](https://img.shields.io/badge/Version-1.4.7-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.3.2-brightgreen.svg)]()
 
 ---
 
 ## 🌟 Overview
 
-**MNC SeizeCar** is a lightweight yet powerful administrative and law-enforcement tool for QBCore FiveM servers. It provides clean, user-friendly commands to remove or seize individual vehicles, wipe all vehicles from a specific player.
-
-Built with **ox_lib** for notifications, and fully integrated with **oxmysql**, this script offers both admin-level destructive tools and job-restricted seizure functionality for police/mechanic roles.
+MNC Seize Car adds three admin/job-restricted commands for removing vehicles from a player's `player_vehicles` garage record. It can permanently seize a specific plate (job-gated, e.g. for police), wipe a single vehicle as an admin action, or wipe every vehicle a player owns. It auto-detects which garage resource (`qb-garages`, `cdn-garage`, or `jg-advancedgarages`) is running on start-up for informational logging.
 
 ---
 
 ## ✨ Key Features
 
-### 🗑️ Vehicle Removal Commands
-- **`/removecar`** – Remove a single vehicle by Player Server ID + Plate (Admin only)
-- **`/removeallcars`** – Delete **ALL** vehicles belonging to a player (Admin only)
+**Commands**
+- `/seizecar [id] [plate]` — job-restricted (via `Config.SeizeCarJob`) deletion of one vehicle from a player's garage, notifies both the acting officer and the target player with the seizing officer's name and job.
+- `/removecar [id] [plate]` — admin command to delete a single vehicle by plate from any player, works even if the target is offline (looks up citizenid/license from the `players` table).
+- `/removeallcars [id]` — admin command that wipes every vehicle record belonging to a player.
 
-### 🚔 Job-Restricted Seizure
-- **`/seizecar`** – Seize a specific vehicle (Restricted to configured jobs like Police)
-- Notifies the vehicle owner (if online) with officer name and job
-- Clean deletion from the `player_vehicles` table
-
-### 🎨 UI
-- ox_lib notifications
-- Automatic plate formatting (uppercase, no spaces)
-
-### 🔒 Security & Safety
-- Strict permission checks (admin/god for removal commands)
-- Job whitelist for seizure command
-- Input validation and error handling
+**Behavior**
+- Permission checks use `QBCore.Functions.HasPermission` (admin/god) or ACE permissions for the admin commands; `/seizecar` checks the caller's current job against `Config.SeizeCarJob`.
+- Works against offline players by querying the `players` table directly with `oxmysql` when the target isn't connected.
+- All deletions go straight against the `player_vehicles` table (`DELETE ... WHERE citizenid = ? AND plate = ?`), so removed vehicles disappear from garages immediately.
+- Notifications are sent through `ox_lib:notify` to both the command issuer and the affected player (with server console fallback for console-issued commands).
+- Auto-detects installed garage resource (`qb-garages`, `cdn-garage`, `jg-advancedgarages`) at startup purely for a console log message.
 
 ---
 
 ## 📋 Requirements
 
-| Dependency     | Version | Required |
-|----------------|---------|----------|
-| QBCore         | Latest  | ✅ Yes   |
-| ox_lib         | Latest  | ✅ Yes   |
-| oxmysql        | Latest  | ✅ Yes   |
+| Dependency | Required |
+|---|---|
+| qb-core | Yes |
+| ox_lib | Yes |
+| oxmysql | Yes |
 
 ---
 
 ## 🚀 Installation
 
-### 1️⃣ Download & Place
-
-Place the resource in your resources folder:
-```
+```bash
+# Place into your resources folder
 [server-data]/resources/[custom]/mnc-seizecar/
 ```
 
-### 2️⃣ Add to Server Config
-
-Add the following line to your `server.cfg`:
-
 ```lua
+# server.cfg
 ensure mnc-seizecar
 ```
 
-**Make sure** the following are started **before** this resource:
-```lua
-ensure qb-core
-ensure ox_lib
-ensure oxmysql
-```
+No database import is required — the script only performs `DELETE` queries against the existing QBCore `player_vehicles` table.
 
 ---
 
-## 🎮 Commands
+## ⚙️ Configuration Guide
 
-| Command                   | Description                                      | Permission / Job      |
-|---------------------------|--------------------------------------------------|-----------------------|
-| `/removecar`              | Remove one vehicle by ID + Plate                 | Admin / God           |
-| `/removeallcars`          | Remove **ALL** vehicles from a player            | Admin / God           |
-| `/seizecar`               | Seize a player's vehicle (roleplay tool)         | Configured Jobs       |
-
----
-
-## ⚙️ How It Works
-
-1. **Admins** type a command /removecar
-2. Enter **Player Server ID** and **Vehicle Plate**. example: "/removecar 45 asv145fr"
-3. Vehicle is permanently deleted from `player_vehicles` table
-4. For `/seizecar`: Only allowed jobs can use it.
-
-**Note**: This script only removes vehicles from the database. It does **not** delete currently spawned vehicles on the map.
-
----
-
-## 🔧 Configuration
-
-The only configurable part is the seizure job list in `server.lua`:
+Configuration lives inline at the top of `server.lua`:
 
 ```lua
 Config = {
-    SeizeCarJob = { ['police'] = true, ['mechanic'] = false, ['mechanic2'] = false },  -- Add more jobs here if needed
+    DefaultFuel = 100,
+    DefaultEngineHealth = 1000,
+    DefaultBodyHealth = 1000,
+    -- Jobs allowed to use /seizecar (e.g. police, mechanic, etc.)
+    SeizeCarJob = { ['police'] = true, ['mechanic'] = false },
 }
 ```
 
-Add or remove jobs as needed for your server.
+`SeizeCarJob` is a whitelist of job names allowed to run `/seizecar` — set a job to `true` to grant access, `false` (or omit it) to deny it.
 
 ---
 
-## 📝 Credits
+## 🎮 Controls & Usage
 
-**Author**: Stan Leigh  
-**Version**: 1.4.7  
-**Framework**: QBCore  
-
----
-
-## 📞 Support & Community
-
-[![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/aTBsSZe5C6)
-
-[![GitHub](https://img.shields.io/badge/GitHub-View%20Script-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/MnCLosSantos/mnc-seizecar)
+- `/seizecar [id] [plate]` — usable by players whose job is whitelisted in `Config.SeizeCarJob`.
+- `/removecar [id] [plate]` — admin only.
+- `/removeallcars [id]` — admin only.
 
 ---
 
-**Enjoy safe and easy vehicle management on your server!** 🗑️🚗
+## 🔧 Troubleshooting
+
+- **"No vehicle found with plate"** — plates are matched uppercase against `player_vehicles`; double-check the plate was typed correctly.
+- **"Your job cannot use this command"** — the caller's current job isn't set to `true` in `Config.SeizeCarJob`.
+- **Player not found (offline target)** — the script falls back to a lookup by server ID in the `players` table; if the target ID has never connected to this server it won't resolve.
+- **Garage detection log says "unknown"** — this is informational only and doesn't block functionality; it just means none of `qb-garages`, `cdn-garage`, or `jg-advancedgarages` were detected as started.
+
+---
+
+## 📝 Credits & License
+
+**Author**: Stan Leigh
+**Version**: 1.3.2
+**Framework**: QBCore
+
+Distributed as part of the MnCLosSantos mod-dump collection — open source, please credit the original author if you edit and re-release.
