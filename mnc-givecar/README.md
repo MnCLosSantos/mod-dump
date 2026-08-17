@@ -1,4 +1,5 @@
-# 🚗 MNC GiveCar System
+# 🚗 MnC Give Car
+
 [![FiveM](https://img.shields.io/badge/FiveM-Ready-green.svg)](https://fivem.net/)
 [![QBCore](https://img.shields.io/badge/Framework-QBCore-blue.svg)](https://github.com/qbcore-framework)
 [![Version](https://img.shields.io/badge/Version-1.3.1-brightgreen.svg)]()
@@ -7,143 +8,86 @@
 
 ## 🌟 Overview
 
-The **MNC GiveCar System** allows admins or automated systems (like Tebex) to **instantly grant vehicles to players**.
-It automatically detects the installed **garage system**, supports all modern **QBCore** builds, and adapts to your `player_vehicles` table automatically — even if it doesn’t include the `mileage` column.
-
-Vehicles are saved to the player’s garage with:
-
-* ✅ Full fuel and health
-* ✅ Zero mileage
-* ✅ Default detected garage
-* ✅ Auto-generated license plate
+MnC Give Car is an advanced `/givecar` admin command that permanently grants a vehicle to a player by inserting it directly into `player_vehicles`. It auto-detects your installed garage resource, works for offline players, and is safe to trigger from the server console — making it ideal for Tebex/webstore purchase delivery as well as manual admin use.
 
 ---
 
 ## ✨ Key Features
 
-* 🧠 **Automatic Garage Detection**
-
-  * Works with:
-
-    * `qb-garages`
-    * `cdn-garage`
-    * `jg-advancedgarages`
-  * Fallback to **pillboxgarage** if unknown.
-
-* 🔢 **Auto Plate Generation**
-
-  * Automatically creates a random **8-character alphanumeric**.
-
-* 💾 **Smart DB Compatibility**
-
-  * Dynamically checks for the `mileage` column and adjusts the SQL query automatically.
-
-* ⚙️ **Full Vehicle Condition**
-
-  * Full fuel (`100%`), engine health (`1000`), and body health (`1000`).
-
-* 📢 **Custom ox_lib Notifications**
-
-  * Sender sees confirmation for **15 seconds**.
-  * Receiver sees confirmation for **4 minutes**.
-
-* 🧩 **Tebex-Ready**
-
-  * Supports console or chat commands from Tebex reward actions.
+- **Command**: `/givecar [id] [model]` registered via `QBCore.Commands.Add`
+- Permission check requires the caller to have the `admin` or `god` QBCore permission group (or the `command` ace) — but the check is skipped entirely for console/source `0`, so Tebex or other server-side scripts can call it directly
+- **Auto garage detection** — checks for `qb-garages`, `cdn-garage`, or `jg-advancedgarages` at startup and picks a sensible default garage name for the new vehicle
+- **Offline-safe target lookup** — resolves the target's `citizenid`/`license` from the live player object if online, or queries the `players` table directly if offline
+- **Schema-safe insert** — checks whether `player_vehicles` has a `mileage` column and builds the correct `INSERT` query either way, so it works across different QBCore database versions
+- Generates a random 8-character plate automatically
+- Applies configurable default fuel/engine/body health to the new vehicle
+- Sends ox_lib notifications to both the admin and the recipient (recipient notification lasts 2 minutes)
 
 ---
 
 ## 📋 Requirements
 
-| Dependency        | Version   | Required |
-| ----------------- | --------- | -------- |
-| QBCore Framework  | Latest    | ✅        |
-| oxmysql           | Latest    | ✅        |
-| ox_lib            | Latest    | ✅        |
-| Any Garage System | Supported | ✅        |
+| Dependency | Required |
+|---|---|
+| qb-core | ✅ Yes |
+| ox_lib | ✅ Yes |
+| oxmysql | ✅ Yes |
 
 ---
 
 ## 🚀 Installation
 
-### 1️⃣ Download & Install
-
 ```bash
-git clone https://github.com/MnCLosSantos/mnc-givecar.git
+# Place into your resources folder
+[server-data]/resources/[custom]/mnc-givecar/
 ```
-
-Or download and extract the ZIP into:
-
-```
-[server-data]/resources/[scripts]/mnc-givecar
-```
-
----
-
-### 2️⃣ Add to Server Config
 
 ```lua
-ensure oxmysql
-ensure ox_lib
+# server.cfg
 ensure mnc-givecar
 ```
 
+No database import is needed — the script writes directly into your existing `player_vehicles` table using your standard QBCore schema.
+
 ---
 
-### 3️⃣ Command Usage
+## ⚙️ Configuration Guide
 
-```bash
-/givecar [playerID] [vehicleModel]
+There is no separate `config.lua`; a small inline table at the top of `server.lua` controls the defaults applied to every vehicle it gives:
+
+```lua
+Config = {
+    DefaultFuel = 100,
+    DefaultEngineHealth = 1000,
+    DefaultBodyHealth = 1000,
+}
 ```
 
-#### 🧰 Examples
+---
 
-```bash
-/givecar 1 adder
-/givecar "ID" "SPAWNCODE"
+## 🎮 Controls & Usage
+
+```
+/givecar [server id] [vehicle model/spawn name]
 ```
 
-* A plate will be **generated automatically**.
-* Vehicle is saved into the **default detected garage** (e.g., pillboxgarage or A).
+Example: `/givecar 3 adder` gives player server ID 3 an Adder in the auto-detected default garage.
 
 ---
 
-### 4️⃣ Tebex Integration (Donations)
+## 🔧 Troubleshooting
 
-Add Tebex package commands like:
-
-```bash
-say Thank you for supporting MnC!
-givecar {{sid}} adder
-say A player has received their donation car!
-```
-
-This automatically gives the vehicle when the Tebex purchase completes.
+- **"Invalid player ID or player not found"** — the target ID doesn't match an online player or a row in the `players` table; double-check the server ID.
+- **Vehicle appears in the wrong garage** — the script auto-detects `qb-garages` / `cdn-garage` / `jg-advancedgarages` at resource start; if you use a different garage script, the vehicle will default to `pillboxgarage`/`A` — edit `DetectGarageSystem()` in `server.lua` to add your garage.
+- **Insert fails silently** — confirm `oxmysql` is running before this resource starts, and that your `player_vehicles` table matches standard QBCore column names.
+- **Console/Tebex calls are being blocked** — only calls from an actual player (source ≠ 0) are permission-checked; console-triggered calls always bypass the check by design.
 
 ---
 
-### 🏁 Garage Detection Logic
+## 📝 Credits & License
 
-| Garage System      | Default Garage |
-| ------------------ | -------------- |
-| qb-garages         | pillboxgarage  |
-| cdn-garage         | A              |
-| jg-advancedgarages | pillboxgarage  |
-| Unknown/Fallback   | pillboxgarage  |
+**Author**: Stan Leigh
+**Version**: 1.3.1
+**Framework**: QBCore
 
-The script auto-detects which garage is active on startup — no config needed.
-
----
-
-## 🧠 Developer Notes
-
-* Works with both `license` and `citizenid` identifiers.
-* Auto-detects DB schema (mileage or no mileage).
-* Inserts clean, valid entries into `player_vehicles`.
-* Fully compatible with `ox_lib` notification system and Tebex.
-
----
-
-## 📞 Support & Community
-
-[![Discord](https://img.shields.io/badge/Discord-Join%20Support%20Server-7289da?style=for-the-badge\&logo=discord\&logoColor=white)](https://discord.gg/aTBsSZe5C6)
+Distributed as part of the MnCLosSantos mod-dump collection — open source, please credit the original author if you edit and re-release.
