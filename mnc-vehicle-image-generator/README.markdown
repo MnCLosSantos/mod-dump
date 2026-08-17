@@ -1,208 +1,103 @@
 # 📸 MNC Vehicle Image Generator
 
 [![FiveM](https://img.shields.io/badge/FiveM-Ready-green.svg)](https://fivem.net/)
+[![QBCore](https://img.shields.io/badge/Framework-QBCore-blue.svg)](https://github.com/qbcore-framework)
 [![Version](https://img.shields.io/badge/Version-1.8.3-brightgreen.svg)]()
 
 ---
 
 ## 🌟 Overview
 
-A powerful **automatic vehicle screenshot tool** for FiveM servers. Capture high-quality images of any vehicle with full camera control, Discord webhook integration, local PNG saving, and smart chunked processing to prevent entity pool crashes.
-
-Built for developers and server owners who need clean, consistent vehicle images for documentation, websites, or in-game menus.
+MNC Vehicle Image Generator is an admin/dev tool with an NUI menu that automatically spawns each vehicle model from a configurable list, poses it in front of a scripted camera, takes a screenshot with `screenshot-basic`, uploads it to a Discord webhook, and downloads/saves the resulting image locally to the resource's `vehicle-images/` folder. It's built for batch-generating vehicle catalog/showcase images (e.g. for `mnc-vehiclecatalog` or `mnc-vehiclespawner`).
 
 ---
 
 ## ✨ Key Features
 
-### 🎥 Professional Camera System
-- Fully adjustable spawn coordinates, heading, camera offset, rotation & FOV
-- Real-time **Preview Mode** with live updates
-- Drag & resizable floating UI with opacity control
+**Capture pipeline**
+- Iterates through `Config.VehicleSpawnCodes`, spawning each model at a configured coordinate/heading, applying a fade-in, positioning a scripted camera using configurable offset/rotation/FOV, and forcing extra-sunny weather + 8:00 AM lighting for consistent shots.
+- Player is hidden, made invincible, and given no collision during capture; radar/HUD are hidden.
+- Captures are taken in configurable "chunks" (`Config.ChunkSize`, default 25) with a pause between chunks to free the model/entity pool and avoid FiveM pool-size crashes; capture can be resumed from the UI after a chunk pause.
+- Screenshots are uploaded via `exports['screenshot-basic']:requestScreenshotUpload` directly to a Discord webhook, then the server downloads the resulting Discord CDN image and saves it to `vehicle-images/<model>.png` via `SaveResourceFile`.
+- Live progress, per-vehicle skip handling (on model/entity load timeout), and completion status are all pushed to the NUI via `SendNUIMessage`.
 
-### 📤 Discord & Local Storage
-- Automatic upload to Discord via webhook
-- High-quality PNG download & local saving (`vehicle-images/` folder)
-- Persistent `vehicle-images.json` tracking
+**NUI menu**
+- Full HTML/CSS/JS UI (`html/index.html`) for entering a Discord webhook, previewing/adjusting the camera position live against a preview vehicle (`startPreview`/`updatePreview`/`stopPreview`), starting/stopping capture, and tracking which vehicles are already completed.
 
-### 🛡️ Smart Performance Handling
-- **Chunked Capture** (configurable, recommended 25) to prevent entity/model pool crashes
-- Automatic model loading timeout & skipping of invalid vehicles
-- Memory cleanup between vehicles
+**Persistence & exports**
+- Tracks completed captures in `vehicle-images.json` in the resource root (also cross-checks the `vehicle-images/` folder on disk) so re-runs skip already-captured vehicles.
+- Exposes `GetVehicleImage(model)`, `GetAllVehicleImages()`, and `GetVehicleImageFile(model)` server exports for other resources to pull generated image URLs/file paths.
 
-### 🛠️ Quality of Life Tools
-- `/vehlist` command to extract vehicle models from `qb-core/shared/vehicles.lua`
-- "Select 250", "Select Undone", and bulk selection tools
-- Auto-resume after chunk pauses
-- Progress bar with ETA
-- Skip failed vehicles gracefully
-
-### 📊 Tracking & Resume
-- JSON database tracks completed vehicles
-- UI shows completed count with strikethrough
-- Resume capture after server restart or chunk pause
+**Admin command**
+- `/vehlist` (admin only) dumps every vehicle model defined in `qb-core/shared/vehicles.lua` into chunked `vehlist<N>.lua` files (250 vehicles per file, formatted as `Config.VehicleSpawnCodes` tables) for easy copy-paste into this script's config.
 
 ---
 
 ## 📋 Requirements
 
-| Dependency          | Version | Required |
-|---------------------|---------|----------|
-| **screenshot-basic** | Latest  | ✅ Yes   |
-| QBCore Framework    | Latest  | Optional (for `/vehlist`) |
-| ox_lib              | Latest  | Recommended (for notifications) |
+| Dependency | Required |
+|---|---|
+| qb-core | Yes |
+| screenshot-basic | Yes |
 
 ---
 
 ## 🚀 Installation
 
-### 1️⃣ Download & Extract
-
-Place the resource in your resources folder:
-```
+```bash
+# Place into your resources folder
 [server-data]/resources/[custom]/mnc-vehicle-image-generator/
 ```
 
-### 2️⃣ Add to Server Config
-
 ```lua
 # server.cfg
-ensure screenshot-basic
 ensure mnc-vehicle-image-generator
 ```
 
-### 3️⃣ Configure
+No database setup needed. The resource auto-creates/updates `vehicle-images.json` in its own folder and saves downloaded screenshots into a `vehicle-images/` subfolder at runtime — you'll need a Discord webhook URL (entered in the UI, or preset via `Config.DefaultWebhook`) for uploads to work.
 
-Edit `config.lua`:
+---
+
+## ⚙️ Configuration Guide
 
 ```lua
-Config.DefaultWebhook = 'https://discord.com/api/webhooks/...'
-
 Config.CameraSettings = {
-    coords = vector3(90.48, -2731.8, 6.0),
+    coords = vector3(90.48, -2731.8, 6.0), -- Where vehicles spawn
     heading = 290.2,
     cameraOffset = vector3(6.8, -4, 0.6),
     cameraRotation = vector3(176.6, -181.1, -118.5),
     fov = 71.5
 }
 
-Config.CaptureDelay = 1000
-Config.ChunkSize = 25
+Config.CaptureDelay = 1000 -- ms between each vehicle capture
+Config.ChunkSize = 25      -- vehicles captured before pausing to free memory
 ```
 
-### 4️⃣ Vehicle List
-
-Use the in-game command:
-```bash
-/vehlist
-```
-This will generate `vehlist1.lua`, `vehlist2.lua`, etc. Copy the contents into `Config.VehicleSpawnCodes` in `config.lua`.
+`CameraSettings` controls where vehicles spawn and how the screenshot camera is framed relative to them (adjustable live via the UI's preview mode). `CaptureDelay` throttles requests to avoid Discord webhook rate limits, and `ChunkSize` controls how many vehicles are captured before the script pauses to avoid entity/model pool crashes on large batches. `Config.VehicleSpawnCodes` is the list of vehicle spawn codes that will be captured.
 
 ---
 
-## ⚙️ Configuration Guide
+## 🎮 Controls & Usage
 
-### VehicleSpawnCodes (config.lua)
-
-```lua
-Config.VehicleSpawnCodes = {
-    'banshee3',
-    'driftjester3',
-    'polbuffalo6',
-    -- ... up to 250 recommended per batch
-}
-```
-
-### Camera Settings
-
-All values are live-editable in the UI and can be saved permanently.
-
----
-
-## 🎮 Usage
-
-1. Type `/vehimage` or `/vehui` in chat
-2. Paste your Discord webhook
-3. Adjust camera settings (or use Preview)
-4. Select vehicles (use **Select 250** for safety)
-5. Set Chunk Size (25 recommended)
-6. Click **Start Capture**
-
-**Controls:**
-- `ESC` – Close UI
-- Drag logo to move window
-- Resize from edges/corners
-- Opacity slider in header
+- `/vehimage` — opens the capture UI (requests the completed-vehicles list from the server first, then loads the NUI).
+- `/vehlist` — admin only, exports all `qb-core` vehicle models to chunked Lua files for populating `Config.VehicleSpawnCodes`.
+- Inside the UI: enter/test a Discord webhook, preview and fine-tune the camera position against a live preview vehicle, then start/stop/resume batch capture.
 
 ---
 
 ## 🔧 Troubleshooting
 
-**Vehicle not appearing / black screen**
-- Increase `Config.CaptureDelay`
-- Make sure `screenshot-basic` is started before this resource
-
-**Server crashing / freezing**
-- Lower `Config.ChunkSize` (try 15–25)
-- Never exceed 250 vehicles in one batch
-
-**Images not saving**
-- Check server console for errors
-- Ensure resource has write permissions to `vehicle-images/` folder
-
-**Webhook not working**
-- Use the **Test** button in the UI
-- Make sure the webhook has file upload permissions
-
-**Model fails to load**
-- Invalid spawn code or model not streamed
+- **Images aren't uploading** — verify the Discord webhook URL is valid and test it with the UI's webhook test button, or `Config.DefaultWebhook` if preset.
+- **"Model failed to load, skipping"** — some spawn codes in `Config.VehicleSpawnCodes` may belong to add-on vehicles not installed on the server; remove or fix the invalid entries.
+- **Server crashes/pool errors during long batches** — lower `Config.ChunkSize` so the pause-and-clear cycle happens more often.
+- **Downloaded images look tiny/corrupt** — the server rejects downloads under 15KB as likely failed uploads; check that Discord's CDN returned the full-size image and that the webhook has correct permissions.
 
 ---
 
-## 📝 Credits
+## 📝 Credits & License
 
-**Author**: Stan Leigh  
-**Version**: 1.8.3  
+**Author**: Stan Leigh
+**Version**: 1.8.3
+**Framework**: QBCore
 
-
----
-
-## 🔄 Changelog
-
-### Version 1.8.3 (Current)
-**New Features:**
-- ✨ Fully draggable & resizable UI
-- ✨ Opacity control
-- ✨ Auto countdown + resume after chunks
-- ✨ Improved model loading timeouts
-- ✨ Better error handling and user feedback
-
-**Improvements:**
-- 🔧 Enhanced memory cleanup between vehicles
-- 🔧 Smarter Discord URL handling (cdn.discordapp.com)
-- 🔧 Progress ETA calculation
-- 🔧 UI quality-of-life updates
-
-**Bug Fixes:**
-- 🐛 Fixed entity pool issues with aggressive cleanup
-- 🐛 Resolved preview mode conflicts
-- 🐛 Improved chunk resume logic
-
-### Version 1.7.0
-- Initial public release with chunking system
-- Preview mode
-- JSON + local PNG saving
-- `/vehlist` command
-
----
-
-## ⚠️ Important Notes
-
-- **Never** run more than 250 vehicles at once without chunking.
-- Always start `screenshot-basic` before this resource.
-- Captured images are saved both locally (`vehicle-images/`) and uploaded to Discord.
-- Tested stable on large vehicle lists (500+).
-
----
-
-**Capture clean, professional vehicle images effortlessly! 📸**
+Distributed as part of the MnCLosSantos mod-dump collection — open source, please credit the original author if you edit and re-release.
