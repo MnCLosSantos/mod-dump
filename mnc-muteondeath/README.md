@@ -1,78 +1,62 @@
-# 🔇 MNC Mute when Dead
+# 🔇 MnC Mute On Death
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![FiveM](https://img.shields.io/badge/FiveM-Ready-green.svg)](https://fivem.net/)
 [![QBCore](https://img.shields.io/badge/Framework-QBCore-blue.svg)](https://github.com/qbcore-framework)
-[![pma-voice](https://img.shields.io/badge/Voice-pma--voice-orange.svg)](https://github.com/AvarianKnight/pma-voice)
 [![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)]()
 
 ---
 
 ## 🌟 Overview
 
-This script automatically **mutes players when they are dead or in last stand** using **QBCore** metadata and **pma-voice**.  
-It ensures that players cannot talk while incapacitated, improving RP immersion.
+A tiny, fully automatic utility that mutes a player's proximity voice chat while they're dead or in last stand, and restores it the moment they're revived. No config, no commands — it just runs.
 
 ---
 
 ## ✨ Key Features
 
-- 🔇 **Automatic Muting**  
-  - Mutes voice when `isdead` or `inlaststand` metadata is set.  
-  - Automatically unmutes when revived.  
-
-- ⚡ **Optimized Loop**  
-  - Checks player state every **1 second** (lightweight).  
-
-- 🎮 **Plug & Play**  
-  - No commands required.  
-  - Works seamlessly with QBCore + pma-voice.  
+- Polls the local player's QBCore metadata (`isdead`, `inlaststand`) once per second
+- On death: calls `exports['pma-voice']:overrideProximityCheck(...)` with a function that always returns `false`, blocking proximity voice for that player
+- On revive: calls `exports['pma-voice']:resetProximityCheck()` to restore normal voice behavior
+- Logs "Muted: player is dead" / "Unmuted: player revived" to the client console for confirmation
 
 ---
 
 ## 📋 Requirements
 
-```bash
-Dependency             Version   Required
----------------------- --------- ----------
-QBCore Framework       Latest    ✅ Yes
-pma-voice              Latest    ✅ Yes
-```
+| Dependency | Required |
+|---|---|
+| qb-core | ✅ Yes |
+| pma-voice | ✅ Yes |
 
 ---
 
 ## 🚀 Installation
 
-### 1️⃣ Download & Extract
-
-Place into your resources folder:
-
 ```bash
-[server-data]/resources/[custom]/mnc-deadmute/
+# Place into your resources folder
+[server-data]/resources/[custom]/mnc-muteondeath/
 ```
-
-### 2️⃣ Add to Server Config
 
 ```lua
 # server.cfg
-ensure mnc-deadmute
+ensure mnc-muteondeath
 ```
 
----
-
-## ⚙️ Configuration
-
-No configuration required.  
-The script automatically detects `isdead` and `inlaststand` states from QBCore metadata.
+No database or item setup required.
 
 ---
 
-## 📞 Support & Community
+## 🔧 Troubleshooting
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/aTBs...)
+- **Player still audible while dead** — confirm `pma-voice` is the voice resource actually running on your server; this script calls `pma-voice`-specific exports and won't work with other voice systems without modification.
+- **Player stays muted after revive** — check that your medical/revive script actually clears `isdead`/`inlaststand` in player metadata; this script only reacts to those two flags.
 
 ---
 
-## 📜 License
+## 📝 Credits & License
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+**Author**: David Longhorn
+**Version**: 1.0.0
+**Framework**: QBCore
+
+Distributed as part of the MnCLosSantos mod-dump collection — open source, please credit the original author if you edit and re-release.
