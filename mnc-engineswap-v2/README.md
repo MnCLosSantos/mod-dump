@@ -1,4 +1,4 @@
-# 🔧 MNC Engine Swap System
+# ⚙️ MnC Engine Swap (Admin Edition)
 
 [![FiveM](https://img.shields.io/badge/FiveM-Ready-green.svg)](https://fivem.net/)
 [![QBCore](https://img.shields.io/badge/Framework-QBCore-blue.svg)](https://github.com/qbcore-framework)
@@ -8,221 +8,93 @@
 
 ## 🌟 Overview
 
-A **feature-rich engine swap system** for QBCore FiveM servers. Players can purchase high-performance engine sounds and handling profiles from specialized mechanic shops, have them delivered, and install them with immersive progress-based mechanics. Features persistent per-plate saving, model-level defaults, admin tools, and full database integration.
-
-Perfect for roleplay servers wanting deeper vehicle customization and mechanic job enhancement.
+This is the expanded build of MnC Engine Swap. It keeps the full player-facing shop/purchase/delivery/install workflow from v1, and adds two admin-only tools: an instant free engine-swap command for the vehicle you're sitting in, and a "model sound meta" manager that lets staff set a default engine sound for an entire vehicle model, so every spawn of that model sounds right even before a plate-specific swap is purchased.
 
 ---
 
 ## ✨ Key Features
 
-### 🛒 Shop & Purchase System
-- Multiple customizable shop locations with job restrictions
-- Categorized engine menu (Supercars, Sports, Muscle, Lowriders, etc.)
-- Bank payment validation with price checking
-- Themed shop UIs
+**Player Shop Flow (unchanged from base)**
+- `Config.EngineShops` job-restricted shop locations with blips, delivery points, and install markers
+- Large categorized engine sound catalog (Supercars, Sports Cars, Muscle, Lowriders, Sports Classics, Motorcycles, Sedans, Offroad, Commercial, Formula)
+- Server-validated bank payment, timed crate delivery, three-stage progress bar/circle install sequence, optional skill-check minigame, and automatic refunds on failure
 
-### 📦 Delivery System
-- Configurable delivery delay
-- Visual engine crate + pallet props at delivery point
-- Immersive delivery experience
+**Admin: Instant Engine Swap**
+- `/engineswap` command opens a category → engine `lib.registerContext` menu
+- Requires QBCore permission group `admin`/`god`, or the `command.adminengineswap` ace permission
+- Applies the chosen engine sound (`ForceVehicleEngineAudio`, called three times for reliability) and a matching handling profile (drive force, top speed, traction) to the vehicle the admin is currently in — free and instant, no delivery/payment
+- Saves the change to the same `vehicle_engines` table used by the paid flow
 
-### 🔧 Installation System
-- Multi-stage progress bars/circles (removing stock → conversion kit → new engine)
-- Optional skillcheck minigame
-- Repair animation support
-- Hood animation + proximity checks
-- Vehicle tracking by license plate
+**Admin: Vehicle Model Sound Meta**
+- `/vehsoundmeta` command (same permission check) opens a menu to set a **default** engine sound for the current vehicle's model
+- Overrides are stored in an auto-created `vehicle_model_sounds` table (`model`, `engine_sound`) and can be listed/removed from the same menu
+- On vehicle entry, if no plate-specific swap is saved, the client automatically checks for and applies a model-level default sound
 
-### 💾 Persistence
-- **Per-plate engine saves** (database-backed)
-- **Per-model default sounds** (admin configurable)
-- Automatic application on vehicle entry
-- Survives server restarts and player disconnects
-
-### ⚙️ Handling Integration
-- Transfers real handling data (`fInitialDriveForce`, `fInitialDriveMaxFlatVel`, `fTractionCurveMax`)
-- Temporary model spawning for accurate data extraction
-
-### 👮‍♂️ Admin Tools
-- `/engineswap` — Free instant engine swap menu for admins
-- `/vehsoundmeta` — Manage default sounds per vehicle model
-- Full model sound override system
-
-### 🎨 Additional Features
-- Full ox_lib integration (notifications, contexts, progress)
-- Debug mode support
-- Clean prop management
-- Sound application redundancy for reliability
+**Persistence**
+- Auto-creates `vehicle_engines` (per-plate) and `vehicle_model_sounds` (per-model) tables on startup
 
 ---
 
 ## 📋 Requirements
 
-| Dependency | Version | Required |
-|------------|---------|----------|
-| QBCore Framework | Latest | ✅ Yes |
-| ox_lib | Latest | ✅ Yes |
-| oxmysql | Latest | ✅ Yes |
+| Dependency | Required |
+|---|---|
+| qb-core | ✅ Yes |
+| ox_lib | ✅ Yes |
+| oxmysql | ✅ Yes |
 
 ---
 
 ## 🚀 Installation
 
-### 1️⃣ Download & Extract
-
-Place the resource in your resources folder:
+```bash
+# Place into your resources folder
+[server-data]/resources/[custom]/mnc-engineswap-v2/
 ```
-[server-data]/resources/[custom]/mnc-engineswap/
-```
-
-### 2️⃣ Database Setup
-
-The script **automatically creates** required tables on first start:
-- `vehicle_engines` — Per-plate engine assignments
-- `vehicle_model_sounds` — Model-level default overrides
-
-No manual SQL required.
-
-### 3️⃣ Add to Server Config
 
 ```lua
-ensure oxmysql
-ensure ox_lib
-ensure mnc-engineswap
+# server.cfg
+ensure mnc-engineswap-v2
 ```
 
-### 4️⃣ Configure Settings
-
-Edit `config.lua`:
-- Shop locations, delivery/install points
-- Job restrictions per shop
-- Engine prices and delivery time
-- Installation settings (minigame, progress type, animation)
-- Required toolbox item
-
-### 5️⃣ Add Items (Optional)
-
-If using `Config.RequiredItem`, add to `qb-core/shared/items.lua`:
-```lua
-['toolbox'] = {
-    name = 'toolbox',
-    label = 'Toolbox',
-    weight = 5000,
-    type = 'item',
-    image = 'toolbox.png',
-    unique = false,
-    useable = true,
-    shouldClose = false,
-    description = 'Tools for engine work'
-},
-```
+No SQL import needed — `vehicle_engines` and `vehicle_model_sounds` tables are created automatically with `CREATE TABLE IF NOT EXISTS` on first start.
 
 ---
 
 ## ⚙️ Configuration Guide
 
-### Shop Configuration
 ```lua
-Config.EngineShops = {
-    {
-        title = "LSC Salvage",
-        location = vector3(-340.53, -141.85, 38.93),
-        theme = "purple",
-        delivery = vector3(-358.95, -128.34, 38.71),
-        install = vector3(-329.75, -143.7, 39.06),
-        jobs = {'mechanic', 'mechanic2'},
-        blip = {sprite = 446, color = 27, scale = 0.8, name = "LSC Salvage"}
-    }
-}
+Config.EnginePrice = 2500
+Config.EngineDeliveryTime = 5000
+Config.RequiredItem = 'toolbox'
 ```
 
-### Installation Settings
-```lua
-Config.Installation = {
-    requireMinigame = false,
-    minigameMode = 'easy',
-    progressDuration = 25000,
-    progressType = 'bar', -- 'bar' or 'circle'
-    useAnimation = true,
-}
-```
-
-### Engine List
-Engines are defined in `Config.EngineSounds` with categories, names, sound hashes, prices, and images.
+Shop locations and the full engine catalog use the exact same `Config.EngineShops` / `Config.EngineSounds` structure as v1 — see that catalog to add or reprice engines. Admin permission group is hard-coded near the top of `server.lua` as `ADMIN_GROUP = 'admin'` if you need to change it.
 
 ---
 
-## 🎮 Usage
+## 🎮 Controls & Usage
 
-### Player Flow
-1. Go to an engine shop (if you have the required job)
-2. Open the shop menu → Select engine → Pay
-3. Wait for delivery (crate spawns)
-4. Go to installation point with the target vehicle
-5. Track vehicle → Install engine (proximity + hood opens)
-6. Enjoy new engine sound + handling
-
-### Admin Commands
-- `/engineswap` — Open admin engine swap menu (free & instant)
-- `/vehsoundmeta` — Manage default engine sounds for vehicle models
-
-### Persistence
-- Engines are saved to the vehicle's license plate
-- Model defaults apply if no plate-specific engine is saved
-- Both systems work together seamlessly
+- **[E]** at a shop marker — open the paid engine catalog
+- **[E]** at delivery point / vehicle — pick up crate / begin install
+- **/engineswap** — (admin) instantly apply any engine to your current vehicle for free
+- **/vehsoundmeta** — (admin) set or clear the default engine sound for a vehicle model
 
 ---
 
-## 🔧 Commands
+## 🔧 Troubleshooting
 
-| Command | Description | Access |
-|---------|-------------|--------|
-| `/engineswap` | Open admin engine swap menu | Admin/God |
-| `/vehsoundmeta` | Manage model sound overrides | Admin/God |
-
----
-
-## ⚠️ Important Notes
-
-- Vehicles must have **valid license plates**
-- Players must be near the front of the vehicle for installation
-- Sound hashes must match those available in your `dlc` files or custom audio
-- Handling data is pulled from actual vehicle models when possible
-- Strongly recommended to use with the engines pack included
-
----
-
-## 🎬 Troubleshooting
-
-**Engine sound not applying:**
-- Check console for errors
-- Ensure the sound hash exists in your game files
-- Try using admin command to test
-
-**Delivery prop not spawning:**
-- Check coordinates in config
-- Ensure `prop_car_engine_01` and `prop_pallet_02a` are streamed
-
-**Database issues:**
-- Verify oxmysql is running
-- Check server console for table creation messages
-
-**Handling not changing:**
-- Some vehicles have locked handling — results may vary
-
-**Shop not opening:**
-- Confirm job requirements and toolbox (if enabled)
+- **`/engineswap` says access denied** — the caller needs the `admin`/`god` QBCore permission group, or grant the `command.adminengineswap` ace.
+- **Model default sound isn't applying** — it only applies when the vehicle has **no** per-plate swap saved; per-plate swaps always take priority.
+- **Payment fails for the normal shop flow** — price is validated server-side against `Config.EngineSounds`; keep both sides of `config.lua` in sync.
+- **DB errors on startup** — confirm `oxmysql` is connected before this resource starts (`ensure oxmysql` above it in server.cfg).
 
 ---
 
 ## 📝 Credits & License
 
-**Author**: Stan Leigh  
-**Version**: 1.9.4  
+**Author**: Stan Leigh
+**Version**: 1.9.4
+**Framework**: QBCore
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
-
----
-
-**Enhance your server's vehicle roleplay with realistic engine swaps!** 🔥
+Distributed as part of the MnCLosSantos mod-dump collection — open source, please credit the original author if you edit and re-release.
